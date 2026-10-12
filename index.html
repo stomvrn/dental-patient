@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark" data-theme-mode="auto" data-font="normal"
-      data-version="1.0.0"
-      data-urn="urn:vanxo:artifact:dental-patient:1.0.0"
+      data-version="1.0.1"
+      data-urn="urn:vanxo:artifact:dental-patient:1.0.1"
       data-scope="public">
 <head>
 <meta charset="UTF-8">
@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#15120c" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4eee0" media="(prefers-color-scheme: light)">
 <meta name="author" content="Холин Иван Алексеевич (VanXo) · врач-стоматолог, 25 лет практики">
-<meta name="urn" content="urn:vanxo:artifact:dental-patient:1.0.0">
+<meta name="urn" content="urn:vanxo:artifact:dental-patient:1.0.1">
 <meta name="license" content="CC BY 4.0">
 <meta name="description" content="Что делать после лечения зуба: боль, кровь, опухоль, температура. 18 ситуаций. Когда звонить врачу, когда ехать в клинику, когда ждать до утра. Офлайн.">
 <meta name="keywords" content="стоматология, боль после удаления, сухая лунка, кровотечение, флюс, что норма после пломбы, зуб мудрости, имплант, дозы обезболивающих">
@@ -52,7 +52,7 @@
   } catch(e){}
 })();
 </script>
-<title>Стоматология для пациента · шпаргалка · v1.0.0</title>
+<title>Стоматология для пациента · шпаргалка · v1.0.1</title>
 <style>
 :root{
   --bg:#15120c;--bg2:#1e1a13;--bg3:#27221a;--bg4:#332d22;
@@ -278,7 +278,7 @@ a:hover{text-decoration:underline}
 <header class="head">
   <div>
     <div class="head-t">Что делать после лечения зуба</div>
-    <div class="head-s">шпаргалка пациента · v1.0.0 · офлайн</div>
+    <div class="head-s">шпаргалка пациента · v1.0.1 · офлайн</div>
   </div>
   <div class="head-a">
     <button class="tbtn" data-act="font" id="fontBtn" title="Размер шрифта" aria-label="Размер шрифта">А</button>
@@ -1032,10 +1032,10 @@ a:hover{text-decoration:underline}
 </div>
 
 <footer class="foot">
-  <div class="row"><b>Стоматология для пациента</b> · v1.0.0 · офлайн · данные не покидают устройство</div>
+  <div class="row"><b>Стоматология для пациента</b> · v1.0.1 · офлайн · данные не покидают устройство</div>
   <div class="row">Автор: <b>Холин Иван Алексеевич</b> (VanXo), врач-стоматолог, 25 лет практики</div>
   <div class="row">Связь: <a href="https://t.me/ivan_kholin_digital" rel="noopener">@ivan_kholin_digital</a> · <a href="mailto:stom.vrn@gmail.com">stom.vrn@gmail.com</a></div>
-  <div class="row">urn:vanxo:artifact:dental-patient:1.0.0 · CC BY 4.0 · <a href="https://github.com/stomvrn/dental-patient" rel="noopener">Исходник на GitHub</a></div>
+  <div class="row">urn:vanxo:artifact:dental-patient:1.0.1 · CC BY 4.0 · <a href="https://github.com/stomvrn/dental-patient" rel="noopener">Исходник на GitHub</a></div>
   <div class="small">
     Информационный материал. Не является медицинской услугой в смысле ФЗ-323 от 21.11.2011. Не является телемедицинской консультацией. Персональные данные не обрабатываются — артефакт работает локально, в соответствии с ФЗ-152 от 27.07.2006 не является оператором персональных данных.<br><br>
     Лицензия CC BY 4.0 позволяет свободное распространение, изменение и встраивание. Запрещена продажа материала как медицинской услуги или курса без письменного согласования с автором.
@@ -1493,14 +1493,38 @@ function setupSW(){
   });
 }
 
-/* ═══════════════ FILE:// ПРЕДУПРЕЖДЕНИЕ ═══════════════ */
+/* ═══════════════ FILE:// ПРЕДУПРЕЖДЕНИЕ (ИСПРАВЛЕНО) ═══════════════ */
+/* Показываем только при реальном локальном открытии.
+   При этом проверяем не только протокол, но и наличие хоста —
+   это защищает от ложного срабатывания при рендере на хостинге,
+   в пререндере браузера и внутри iframe GitHub Pages. */
 function checkFileProtocol(){
   try {
-    if(location.protocol === 'file:'){
-      var w = $('fileWarn');
-      if(w) w.classList.add('on');
+    var w = $('fileWarn');
+    if(!w) return;
+    var isFile = location.protocol === 'file:';
+    var hasHost = !!(location.hostname && location.hostname.length > 0);
+    var isHttp = /^https?:$/.test(location.protocol);
+    if(isFile && !hasHost && !isHttp){
+      w.classList.add('on');
+    } else {
+      w.classList.remove('on');
     }
   } catch(e){}
+}
+
+/* Перепроверка после полной загрузки страницы.
+   Иногда GitHub Pages отдаёт первую версию документа до финализации location,
+   и нам нужно пересчитать состояние после того, как всё встало на место. */
+function scheduleFileProtocolRecheck(){
+  if(document.readyState === 'complete'){
+    setTimeout(checkFileProtocol, 50);
+  } else {
+    window.addEventListener('load', function(){
+      setTimeout(checkFileProtocol, 50);
+      setTimeout(checkFileProtocol, 250);
+    });
+  }
 }
 
 /* ═══════════════ INIT ═══════════════ */
@@ -1510,14 +1534,16 @@ function init(){
   applyFont();
   updateProgress();
   checkFileProtocol();
+  scheduleFileProtocolRecheck();
   setupPWA();
   setupSW();
   requestWakeLock();
 
-  console.log('%c Стоматология для пациента v1.0.0 %c urn:vanxo:artifact:dental-patient:1.0.0 · CC BY 4.0 ',
+  console.log('%c Стоматология для пациента v1.0.1 %c urn:vanxo:artifact:dental-patient:1.0.1 · CC BY 4.0 ',
     'background:linear-gradient(135deg,#c9a95e,#8a6e28);color:#15120c;padding:3px 10px;border-radius:4px;font-weight:700',
     'color:#c9a95e;font-size:11px');
   console.log('  18 плиток · 7 разделов · офлайн · SVG · PWA · Wake Lock');
+  console.log('  checkFileProtocol: протокол ' + location.protocol + ', хост ' + (location.hostname || '—'));
 }
 
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
