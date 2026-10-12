@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract tag
+        id: tag
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Verify version matches index.html
+        run: |
+          TAG_VERSION="${{ steps.tag.outputs.version }}"
+          FILE_VERSION=$(grep -oP 'data-version="\K[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
+          echo "Тег: v$TAG_VERSION"
+          echo "index.html: v$FILE_VERSION"
+          if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+            echo "::error::Версия в теге не совпадает с версией в index.html"
+            exit 1
+          fi
+          echo "✓ Версии совпадают"
+
+      - name: Verify version matches artifact.json
+        run: |
+          if [ ! -f artifact.json ]; then
+            echo "::warning::artifact.json не найден"
+            exit 0
+          fi
+          TAG_VERSION="${{ steps.tag.outputs.version }}"
+          JSON_VERSION=$(grep -oP '"version":\s*"\K[0-9]+\.[0-9]+\.[0-9]+' artifact.json | head -1)
+          if [ "$TAG_VERSION" != "$JSON_VERSION" ]; then
+            echo "::error::Версия в теге не совпадает с версией в artifact.json"
+            exit 1
+          fi
+          echo "✓ artifact.json синхронизирован"
+
+      - name: Compute SHA-256
+        id: hash
+        run: |
+          HASH=$(sha256sum index.html | cut -d' ' -f1)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "SHA-256: $HASH"
+
+      - name: Extract CHANGELOG section
+        id: changelog
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          if [ ! -f CHANGELOG.md ]; then
+            echo "changelog=Нет CHANGELOG.md" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          NOTES=$(awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { flag=1; next }
+            flag && /^## \[/ { flag=0 }
+            flag { print }
+          ' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Смотрите CHANGELOG.md"
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.tag.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: index.html
+          generate_release_notes: false
+          body: |
+            ## Стоматология для пациента ${{ github.ref_name }}
+
+            Что делать после лечения зуба. 18 ситуаций, 7 разделов. Офлайн.
+
+            **Открыть:** https://stomvrn.github.io/dental-patient/
+            **Скачать:** `index.html` в приложении к релизу
+
+            ### SHA-256
+${{ steps.hash.outputs.hash }}
+
+text
+
+Сверьте отпечаток после скачивания — команда `sha256sum index.html`.
+
+### Что нового
+
+${{ steps.changelog.outputs.changelog }}
+
+### Лицензия
+
+CC BY 4.0. Свободно к распространению с указанием авторства.
+Запрещена продажа как медицинской услуги без письменного согласования с автором.
