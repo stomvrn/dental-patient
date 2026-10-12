@@ -1,0 +1,27 @@
+# Нормализация переносов строк
+* text=auto eol=lf
+
+# Бинарные файлы
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.svg binary
+
+# Markdown и текст — LF
+*.md text eol=lf
+*.txt text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Не показывать markdown и лицензии в статистике языков
+*.md linguist-documentation
+LICENSE linguist-documentation
+CHANGELOG.md linguist-documentation
+
+# Явно указать основной язык
+index.html linguist-language=HTML
