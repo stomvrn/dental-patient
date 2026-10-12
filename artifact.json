@@ -1,0 +1,75 @@
+{
+  "urn": "urn:vanxo:artifact:dental-patient:1.0.0",
+  "name": "Стоматология для пациента",
+  "slug": "dental-patient",
+  "version": "1.0.0",
+  "status": "live",
+  "scope": "public",
+  "category": "Справочник",
+  "type": "Reference",
+  "tags": [
+    "medical",
+    "dental",
+    "patient-education",
+    "aftercare",
+    "offline",
+    "single-file",
+    "html",
+    "privacy",
+    "cc-by"
+  ],
+  "description": "Что делать после лечения зуба. 18 ситуаций: боль, кровь, опухоль, температура, осложнения. Офлайн.",
+  "longDescription": "Справочник для пациента, который только что вышел из стоматологического кабинета. 7 разделов, 18 раскрывающихся плиток. Что нормально, что требует звонка врачу, что — скорой. Составлен по клиническим рекомендациям СтАР, приказу Минздрава № 786н, NHS и ADA.",
+  "audience": "Пациенты, родители, врачи, клиники",
+  "license": "CC BY 4.0",
+  "language": "ru",
+  "author": {
+    "name": "Холин Иван Алексеевич",
+    "alias": "VanXo",
+    "role": "Врач-стоматолог, 25 лет практики",
+    "github": "stomvrn",
+    "telegram": "ivan_kholin_digital",
+    "email": "stom.vrn@gmail.com"
+  },
+  "links": {
+    "demo": "https://stomvrn.github.io/dental-patient/",
+    "repo": "https://github.com/stomvrn/dental-patient",
+    "issues": "https://github.com/stomvrn/dental-patient/issues"
+  },
+  "properties": {
+    "singleFile": true,
+    "offlineFirst": true,
+    "zeroDependencies": true,
+    "strictCsp": true,
+    "noTracking": true,
+    "noCookies": true,
+    "noAnalytics": true,
+    "localStorage": true,
+    "pwa": true,
+    "serviceWorker": true,
+    "printable": true,
+    "accessible": true
+  },
+  "medical": {
+    "isMedical": true,
+    "hasDisclaimer": true,
+    "isMedicalService": false,
+    "isTelemedicine": false,
+    "isPersonalDataProcessor": false,
+    "lastReviewed": "2026-10-12",
+    "reviewedBy": "Холин Иван Алексеевич, врач-стоматолог"
+  },
+  "sources": [
+    "Клинические рекомендации СтАР — cr.rosminzdrav.ru",
+    "Приказ Минздрава России № 786н от 31.07.2020",
+    "ФЗ-323 от 21.11.2011",
+    "NHS — Aftercare after tooth extraction",
+    "ADA — Postoperative care",
+    "Mayo Clinic — After dental work"
+  ],
+  "versionHistory": [
+    "1.0.0"
+  ],
+  "createdAt": "2026-10-12",
+  "updatedAt": "2026-10-12"
+}
