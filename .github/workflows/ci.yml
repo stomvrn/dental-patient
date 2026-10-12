@@ -1,0 +1,225 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check index.html exists
+        run: |
+          if [ ! -f index.html ]; then
+            echo "::error::index.html не найден"
+            exit 1
+          fi
+          echo "✓ index.html на месте"
+
+      - name: Check file size
+        run: |
+          SIZE=$(stat -c%s index.html)
+          SIZE_KB=$((SIZE / 1024))
+          echo "Размер: ${SIZE} байт (${SIZE_KB} КБ)"
+          if [ "$SIZE" -gt 512000 ]; then
+            echo "::error::index.html больше 500 КБ — проверьте, не добавлено ли лишнее"
+            exit 1
+          fi
+          echo "✓ Размер в пределах 500 КБ"
+
+      - name: Check DOCTYPE
+        run: |
+          if ! head -1 index.html | grep -qi '<!DOCTYPE html>'; then
+            echo "::error::Нет <!DOCTYPE html> в первой строке"
+            exit 1
+          fi
+          echo "✓ DOCTYPE на месте"
+
+      - name: Check charset UTF-8
+        run: |
+          if ! grep -qi '<meta charset="UTF-8">' index.html; then
+            echo "::error::Нет <meta charset=\"UTF-8\">"
+            exit 1
+          fi
+          echo "✓ Charset UTF-8"
+
+      - name: Check viewport
+        run: |
+          if ! grep -qi 'name="viewport"' index.html; then
+            echo "::error::Нет meta viewport — плохо на телефонах"
+            exit 1
+          fi
+          echo "✓ Viewport meta"
+
+      - name: Check title
+        run: |
+          if ! grep -qi '<title>' index.html; then
+            echo "::error::Нет <title>"
+            exit 1
+          fi
+          echo "✓ Title"
+
+      - name: Check CSP
+        run: |
+          if ! grep -qi 'Content-Security-Policy' index.html; then
+            echo "::error::Нет CSP meta-тега"
+            exit 1
+          fi
+          if ! grep -q "connect-src 'none'" index.html; then
+            echo "::error::CSP не содержит connect-src 'none'"
+            exit 1
+          fi
+          if ! grep -q "default-src 'none'" index.html; then
+            echo "::error::CSP не содержит default-src 'none'"
+            exit 1
+          fi
+          if grep -q "unsafe-eval" index.html; then
+            echo "::error::CSP содержит unsafe-eval — запрещено"
+            exit 1
+          fi
+          echo "✓ CSP корректен"
+
+      - name: Check no external scripts
+        run: |
+          if grep -E 'src="https?://' index.html; then
+            echo "::error::Найдены внешние скрипты"
+            exit 1
+          fi
+          echo "✓ Нет внешних скриптов"
+
+      - name: Check no external stylesheets
+        run: |
+          if grep -E 'rel="stylesheet"[^>]*href="https?://|href="https?://[^"]*"[^>]*rel="stylesheet"' index.html; then
+            echo "::error::Найдены внешние стили"
+            exit 1
+          fi
+          echo "✓ Нет внешних стилей"
+
+      - name: Check no external images
+        run: |
+          if grep -E '<img[^>]*src="https?://' index.html; then
+            echo "::error::Найдены внешние изображения"
+            exit 1
+          fi
+          echo "✓ Нет внешних изображений"
+
+      - name: Check no eval
+        run: |
+          if grep -E '\beval\s*\(' index.html; then
+            echo "::error::Найден eval()"
+            exit 1
+          fi
+          if grep -E 'new\s+Function\s*\(' index.html; then
+            echo "::error::Найден new Function()"
+            exit 1
+          fi
+          echo "✓ Нет eval и new Function"
+
+      - name: Check no document.write
+        run: |
+          if grep -E 'document\.write\s*\(' index.html; then
+            echo "::error::Найден document.write()"
+            exit 1
+          fi
+          echo "✓ Нет document.write"
+
+      - name: Check no inline onclick handlers
+        run: |
+          if grep -E 'on(click|change|submit|load|error|input|keydown|keyup|mousedown|mouseup|mouseover|mouseout|focus|blur|scroll)\s*=' index.html | grep -v 'addEventListener' | grep -v '// ' > /dev/null; then
+            echo "::warning::Найдены inline-обработчики — проверьте"
+          fi
+          echo "✓ Проверка inline-обработчиков завершена"
+
+      - name: Check URN in meta
+        run: |
+          if ! grep -q 'urn:vanxo:artifact:dental-patient' index.html; then
+            echo "::error::URN артефакта не найден"
+            exit 1
+          fi
+          echo "✓ URN на месте"
+
+      - name: Check URN consistency
+        run: |
+          URN_META=$(grep -oP 'meta name="urn" content="\K[^"]+' index.html | head -1)
+          URN_HTML=$(grep -oP 'data-urn="\K[^"]+' index.html | head -1)
+          if [ "$URN_META" != "$URN_HTML" ]; then
+            echo "::error::URN не совпадают: meta=$URN_META, html=$URN_HTML"
+            exit 1
+          fi
+          echo "✓ URN meta и data-urn совпадают: $URN_META"
+
+      - name: Check version sync with artifact.json
+        run: |
+          if [ ! -f artifact.json ]; then
+            echo "::warning::artifact.json не найден — пропускаю проверку версии"
+            exit 0
+          fi
+          V_FILE=$(grep -oP 'data-version="\K[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
+          V_JSON=$(grep -oP '"version":\s*"\K[0-9]+\.[0-9]+\.[0-9]+' artifact.json | head -1)
+          echo "index.html: v$V_FILE"
+          echo "artifact.json: v$V_JSON"
+          if [ "$V_FILE" != "$V_JSON" ]; then
+            echo "::error::Версии не совпадают"
+            exit 1
+          fi
+          echo "✓ Версии синхронизированы"
+
+      - name: Check no \b with cyrillic
+        run: |
+          if grep -E '\\b\s*\[?[А-ЯЁа-яё]' index.html > /dev/null; then
+            echo "::warning::Возможно \b используется с кириллицей — не работает в JS"
+          fi
+          echo "✓ Проверка \b с кириллицей завершена"
+
+      - name: Check no TODO
+        run: |
+          if grep -iE 'TODO|FIXME|XXX|HACK|\[заполнить\]|\[уточнить\]' index.html; then
+            echo "::error::Найдены TODO-заглушки"
+            exit 1
+          fi
+          echo "✓ Нет TODO"
+
+      - name: Compute SHA-256
+        run: |
+          HASH=$(sha256sum index.html | cut -d' ' -f1)
+          echo "SHA-256: $HASH"
+          echo "### SHA-256 index.html" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$HASH" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Validate JSON files
+        run: |
+          for f in artifact.json; do
+            if [ -f "$f" ]; then
+              if ! python3 -m json.tool "$f" > /dev/null 2>&1; then
+                echo "::error::$f содержит некорректный JSON"
+                exit 1
+              fi
+              echo "✓ $f — корректный JSON"
+            fi
+          done
+
+      - name: Check required files
+        run: |
+          MISSING=""
+          for f in index.html README.md LICENSE; do
+            if [ ! -f "$f" ]; then
+              MISSING="$MISSING $f"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Отсутствуют обязательные файлы:$MISSING"
+            exit 1
+          fi
+          echo "✓ Все обязательные файлы на месте"
